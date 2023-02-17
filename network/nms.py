@@ -1,5 +1,6 @@
 # Non-maxima suppression
-# Code taken from Kornia library: https://github.com/kornia/kornia/blob/master/kornia/geometry/subpix/nms.py
+# Code taken from Kornia library:
+# https://github.com/kornia/kornia/blob/master/kornia/geometry/subpix/nms.py
 
 from typing import Tuple
 
@@ -24,11 +25,13 @@ class NonMaximaSuppression2d(nn.Module):
     def __init__(self, kernel_size: Tuple[int, int]):
         super(NonMaximaSuppression2d, self).__init__()
         self.kernel_size: Tuple[int, int] = kernel_size
-        self.padding: Tuple[int, int, int, int] = self._compute_zero_padding2d(kernel_size)
+        self.padding: Tuple[int, int, int,
+                            int] = self._compute_zero_padding2d(kernel_size)
         self.kernel = _get_nms_kernel2d(*kernel_size)
 
     @staticmethod
-    def _compute_zero_padding2d(kernel_size: Tuple[int, int]) -> Tuple[int, int, int, int]:
+    def _compute_zero_padding2d(
+            kernel_size: Tuple[int, int]) -> Tuple[int, int, int, int]:
         assert isinstance(kernel_size, tuple), type(kernel_size)
         assert len(kernel_size) == 2, kernel_size
 
@@ -42,8 +45,27 @@ class NonMaximaSuppression2d(nn.Module):
         assert len(x.shape) == 4, x.shape
         B, CH, H, W = x.size()
         # find local maximum values
-        max_non_center = F.conv2d(F.pad(x, list(self.padding)[::-1], mode='replicate'),
-                                  self.kernel.repeat(CH, 1, 1, 1).to(x.device, x.dtype),
-                                  stride=1, groups=CH).view(B, CH, -1, H, W).max(dim=2)[0]
+        max_non_center = F.conv2d(
+            F.pad(
+                x,
+                list(
+                    self.padding)[
+                    ::-1],
+                mode='replicate'),
+            self.kernel.repeat(
+                CH,
+                1,
+                1,
+                1).to(
+                x.device,
+                x.dtype),
+            stride=1,
+            groups=CH).view(
+            B,
+            CH,
+            -1,
+            H,
+            W).max(
+            dim=2)[0]
         mask = x > max_non_center
         return x * (mask.to(x.dtype))

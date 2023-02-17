@@ -13,7 +13,8 @@ cfg = {
 
 
 def make_modules(cfg, batch_norm=False):
-    # Each module is a list of sequential layers operating at the same spacial dimension followed by MaxPool2d
+    # Each module is a list of sequential layers operating at the same spacial
+    # dimension followed by MaxPool2d
     modules = nn.ModuleList()
     # Number of output channels in each module
     out_channels = []
@@ -30,7 +31,12 @@ def make_modules(cfg, batch_norm=False):
             layers = []
         else:
             if batch_norm:
-                conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1, bias=False)
+                conv2d = nn.Conv2d(
+                    in_channels,
+                    v,
+                    kernel_size=3,
+                    padding=1,
+                    bias=False)
                 layers += [conv2d, nn.BatchNorm2d(v), nn.ReLU(inplace=True)]
             else:
                 conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1)
@@ -44,8 +50,14 @@ def make_modules(cfg, batch_norm=False):
 
 
 class FPN(nn.Module):
-    def __init__(self, layers, out_channels, lateral_channels, return_layers=None):
-        # return_layers: index of layers (numbered from 0) for which feature maps are returned
+    def __init__(
+            self,
+            layers,
+            out_channels,
+            lateral_channels,
+            return_layers=None):
+        # return_layers: index of layers (numbered from 0) for which feature
+        # maps are returned
         super(FPN, self).__init__()
 
         assert len(layers) == len(out_channels)
@@ -57,15 +69,20 @@ class FPN(nn.Module):
         self.smooth_layers = nn.ModuleList()
         if return_layers is None:
             # Feature maps fom all FPN levels are returned
-            self.return_layers = list(range(len(layers)-1))
+            self.return_layers = list(range(len(layers) - 1))
         else:
             self.return_layers = return_layers
         self.min_returned_layer = min(self.return_layers)
 
         # Make lateral layers (for channel reduction) and smoothing layers
         for i in range(self.min_returned_layer, len(self.layers)):
-            self.lateral_layers.append(nn.Conv2d(out_channels[i], self.lateral_channels, kernel_size=1, stride=1,
-                                                 padding=0))
+            self.lateral_layers.append(
+                nn.Conv2d(
+                    out_channels[i],
+                    self.lateral_channels,
+                    kernel_size=1,
+                    stride=1,
+                    padding=0))
         # Smoothing layers are not used. Because bilinear interpolation is used during the upsampling,
         # the resultant feature maps are free from artifacts
 
@@ -86,7 +103,13 @@ class FPN(nn.Module):
         So we choose bilinear upsample which supports arbitrary output sizes.
         '''
         _, _, H, W = y.size()
-        return F.interpolate(x, size=(H, W), mode='bilinear', align_corners=False) + y
+        return F.interpolate(
+            x,
+            size=(
+                H,
+                W),
+            mode='bilinear',
+            align_corners=False) + y
 
     def forward(self, x):
         # Bottom-up pass, store all intermediary feature maps in list c
@@ -98,8 +121,9 @@ class FPN(nn.Module):
         # Top-down pass
         p = [self.lateral_layers[-1](c[-1])]
 
-        for i in range(len(c)-2, self.min_returned_layer-1, -1):
-            temp = self._upsample_add(p[-1],  self.lateral_layers[i-self.min_returned_layer](c[i]))
+        for i in range(len(c) - 2, self.min_returned_layer - 1, -1):
+            temp = self._upsample_add(
+                p[-1], self.lateral_layers[i - self.min_returned_layer](c[i]))
             p.append(temp)
 
         # Reverse the order of tensors in p
@@ -107,7 +131,7 @@ class FPN(nn.Module):
 
         out_tensors = []
         for ndx, l in enumerate(self.return_layers):
-            temp = p[l-self.min_returned_layer]
+            temp = p[l - self.min_returned_layer]
             out_tensors.append(temp)
 
         return out_tensors

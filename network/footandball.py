@@ -11,7 +11,13 @@ from data.augmentation import BALL_LABEL, PLAYER_LABEL, BALL_BBOX_SIZE
 
 
 # Get ranges of cells to mark with ground truth location
-def get_active_cells(bbox_center_x, bbox_center_y, downsampling_factor, conf_width, conf_height, delta):
+def get_active_cells(
+        bbox_center_x,
+        bbox_center_y,
+        downsampling_factor,
+        conf_width,
+        conf_height,
+        delta):
     cell_x = int(bbox_center_x / downsampling_factor)
     cell_y = int(bbox_center_y / downsampling_factor)
     x1 = max(cell_x - delta // 2, 0)
@@ -31,13 +37,20 @@ def cell2pixel(cell_x, cell_y, downsampling_factor):
     return x1, y1, x2, y2
 
 
-def create_groundtruth_maps(bboxes, blabels, img_shape, player_downsampling_factor, ball_downsampling_factor,
-                            player_delta, ball_delta):
+def create_groundtruth_maps(
+        bboxes,
+        blabels,
+        img_shape,
+        player_downsampling_factor,
+        ball_downsampling_factor,
+        player_delta,
+        ball_delta):
     # Generate ground truth: player location map, player confidence map and ball confidence map
     # targets: List of ground truth player and ball positions
     # img_shape: shape of the input image
     # ball_delta: number of cells marked around the bbox center (must be an odd number: 1, 3, 5, ....)
-    # player_delta: number of cells marked around the bbox center (must be an odd number: 1, 3, 5, ....)
+    # player_delta: number of cells marked around the bbox center (must be an
+    # odd number: 1, 3, 5, ....)
 
     # Number of elements in the minibatch
     num = len(bboxes)
@@ -50,9 +63,12 @@ def create_groundtruth_maps(bboxes, blabels, img_shape, player_downsampling_fact
     player_conf_width = w // player_downsampling_factor
 
     # match priors (default boxes) and ground truth boxes
-    player_loc_t = torch.zeros([num, player_conf_height, player_conf_width, 4], dtype=torch.float)
-    player_conf_t = torch.zeros([num, player_conf_height, player_conf_width], dtype=torch.long)
-    ball_conf_t = torch.zeros([num, ball_conf_height, ball_conf_width], dtype=torch.long)
+    player_loc_t = torch.zeros(
+        [num, player_conf_height, player_conf_width, 4], dtype=torch.float)
+    player_conf_t = torch.zeros(
+        [num, player_conf_height, player_conf_width], dtype=torch.long)
+    ball_conf_t = torch.zeros(
+        [num, ball_conf_height, ball_conf_width], dtype=torch.long)
 
     for idx, (boxes, labels) in enumerate(zip(bboxes, blabels)):
         # Iterate over all batch elements
@@ -64,36 +80,46 @@ def create_groundtruth_maps(bboxes, blabels, img_shape, player_downsampling_fact
             bbox_height = box[3] - box[1]
 
             if label == BALL_LABEL:
-                # Convert bbox centers to cell coordinates in the ball confidence map
+                # Convert bbox centers to cell coordinates in the ball
+                # confidence map
                 x1, y1, x2, y2 = get_active_cells(bbox_center_x, bbox_center_y, ball_downsampling_factor,
                                                   ball_conf_width, ball_conf_height, ball_delta)
                 ball_conf_t[idx, y1:y2 + 1, x1:x2 + 1] = 1
             elif label == PLAYER_LABEL:
-                # Convert bbox centers to cell coordinates in the player confidence map
+                # Convert bbox centers to cell coordinates in the player
+                # confidence map
                 x1, y1, x2, y2 = get_active_cells(bbox_center_x, bbox_center_y, player_downsampling_factor,
                                                   player_conf_width, player_conf_height, player_delta)
                 player_conf_t[idx, y1:y2 + 1, x1:x2 + 1] = 1
 
                 # Ground truth for the player bounding box
                 # We encode bounding box as relative position of the centre (with respect to the cell centre)
-                # and it's width and height in normalized coordinates in [0..1] range (where 1 is image width/height)
+                # and it's width and height in normalized coordinates in [0..1]
+                # range (where 1 is image width/height)
 
                 # pixel coordinates of each cell center
-                temp_x = torch.tensor(range(x1, x2 + 1)).float() * player_downsampling_factor + \
-                         (player_downsampling_factor - 1) / 2
-                temp_y = torch.tensor(range(y1, y2 + 1)).float() * player_downsampling_factor + \
-                         (player_downsampling_factor - 1) / 2
+                temp_x = torch.tensor(
+                    range(
+                        x1, x2 + 1)).float() * player_downsampling_factor + (
+                    player_downsampling_factor - 1) / 2
+                temp_y = torch.tensor(
+                    range(
+                        y1, y2 + 1)).float() * player_downsampling_factor + (
+                    player_downsampling_factor - 1) / 2
 
-                # Displacement of the bbox center from the cell center in relative coordinates
+                # Displacement of the bbox center from the cell center in
+                # relative coordinates
                 temp_x = (bbox_center_x - temp_x) / w
                 temp_y = (bbox_center_y - temp_y) / h
 
-                player_loc_t[idx, y1:y2 + 1, x1: x2+1, 0] = temp_x.unsqueeze(0)
-                player_loc_t[idx, y1:y2 + 1, x1: x2+1, 1] = temp_y.unsqueeze(1)
+                player_loc_t[idx, y1:y2 + 1, x1: x2 +
+                             1, 0] = temp_x.unsqueeze(0)
+                player_loc_t[idx, y1:y2 + 1, x1: x2 +
+                             1, 1] = temp_y.unsqueeze(1)
 
                 # Normalized width and height
-                player_loc_t[idx, y1:y2 + 1, x1: x2+1, 2] = bbox_width / w
-                player_loc_t[idx, y1:y2 + 1, x1: x2+1, 3] = bbox_height / h
+                player_loc_t[idx, y1:y2 + 1, x1: x2 + 1, 2] = bbox_width / w
+                player_loc_t[idx, y1:y2 + 1, x1: x2 + 1, 3] = bbox_height / h
 
     return player_loc_t, player_conf_t, ball_conf_t
 
@@ -110,9 +136,17 @@ def count_parameters(model):
 
 
 class FootAndBall(nn.Module):
-    def __init__(self, phase, base_network: nn.Module, player_regressor: nn.Module, player_classifier: nn.Module,
-                 ball_classifier: nn.Module, max_player_detections=100, max_ball_detections=100, player_threshold=0.0,
-                 ball_threshold=0.0):
+    def __init__(
+            self,
+            phase,
+            base_network: nn.Module,
+            player_regressor: nn.Module,
+            player_classifier: nn.Module,
+            ball_classifier: nn.Module,
+            max_player_detections=100,
+            max_ball_detections=100,
+            player_threshold=0.0,
+            ball_threshold=0.0):
         # phase: in 'train' returns unnormalized confidence values in feature maps (logits)
         #        in 'eval' returns normalized confidence values (passed through Softmax)
         #        in 'detect' returns detection bounding boxes
@@ -145,10 +179,17 @@ class FootAndBall(nn.Module):
         self.nms_kernel_size = (3, 3)
         self.nms = nms.NonMaximaSuppression2d(self.nms_kernel_size)
 
-    def detect_from_map(self, confidence_map, downscale_factor, max_detections, bbox_map=None):
-        # downscale_factor: downscaling factor of the confidence map versus an original image
+    def detect_from_map(
+            self,
+            confidence_map,
+            downscale_factor,
+            max_detections,
+            bbox_map=None):
+        # downscale_factor: downscaling factor of the confidence map versus an
+        # original image
 
-        # Confidence map is [B, C=2, H, W] tensor, where C=0 is background and C=1 is an object
+        # Confidence map is [B, C=2, H, W] tensor, where C=0 is background and
+        # C=1 is an object
         confidence_map = self.nms(confidence_map)[:, 1]
         # confidence_map is (B, H, W) tensor
         batch_size, h, w = confidence_map.shape[0], confidence_map.shape[1], confidence_map.shape[2]
@@ -158,7 +199,8 @@ class FootAndBall(nn.Module):
         if max_detections < indices.shape[1]:
             indices = indices[:, :max_detections]
 
-        # Compute indexes of cells with detected object and convert to pixel coordinates
+        # Compute indexes of cells with detected object and convert to pixel
+        # coordinates
         xc = indices % w
         xc = xc.float() * downscale_factor + (downscale_factor - 1.) / 2.
 
@@ -183,17 +225,25 @@ class FootAndBall(nn.Module):
         else:
             # For the ball bbox map is not given. Create fixed-size bboxes
             batch_size, h, w = confidence_map.shape[0], confidence_map.shape[-2], confidence_map.shape[-1]
-            bbox_map = torch.zeros((batch_size, 4, h * w), dtype=torch.float).to(confidence_map.device)
+            bbox_map = torch.zeros(
+                (batch_size,
+                 4,
+                 h * w),
+                dtype=torch.float).to(
+                confidence_map.device)
             bbox_map[:, [2, 3]] = BALL_BBOX_SIZE
 
         # Resultant detections (batch_size, max_detections, bbox),
         # where bbox = (x1, y1, x2, y2, confidence) in pixel coordinates
-        detections = torch.zeros((batch_size, max_detections, 5), dtype=float).to(confidence_map.device)
+        detections = torch.zeros(
+            (batch_size, max_detections, 5), dtype=float).to(
+            confidence_map.device)
 
         for n in range(batch_size):
             temp = bbox_map[n, :, indices[n]]
             # temp is (4, n_detections) tensor, with bbox details in pixel units (dx, dy, w, h)
-            # where dx, dy is a displacement of the box center relative to the cell center
+            # where dx, dy is a displacement of the box center relative to the
+            # cell center
 
             # Compute bbox centers = cell center + predicted displacement
             bx = xc[n] + temp[0]
@@ -208,25 +258,34 @@ class FootAndBall(nn.Module):
         return detections
 
     def detect(self, player_feature_map, player_bbox, ball_feature_map):
-        # downscale_factor: downscaling factor of the confidence map versus an original image
-        player_detections = self.detect_from_map(player_feature_map, self.player_downsampling_factor,
-                                                 self.max_player_detections, player_bbox)
+        # downscale_factor: downscaling factor of the confidence map versus an
+        # original image
+        player_detections = self.detect_from_map(
+            player_feature_map,
+            self.player_downsampling_factor,
+            self.max_player_detections,
+            player_bbox)
 
-        ball_detections = self.detect_from_map(ball_feature_map, self.ball_downsampling_factor,
-                                               self.max_ball_detections)
+        ball_detections = self.detect_from_map(
+            ball_feature_map,
+            self.ball_downsampling_factor,
+            self.max_ball_detections)
 
         # Iterate over batch elements and prepare a list with detection results
         output = []
         for player_det, ball_det in zip(player_detections, ball_detections):
             # Filter out detections below the confidence threshold
-            player_det = player_det[player_det[..., 4] >= self.player_threshold]
+            player_det = player_det[player_det[..., 4]
+                                    >= self.player_threshold]
             player_boxes = player_det[..., 0:4]
             player_scores = player_det[..., 4]
-            player_labels = torch.tensor([PLAYER_LABEL] * len(player_det), dtype=torch.int64)
+            player_labels = torch.tensor(
+                [PLAYER_LABEL] * len(player_det), dtype=torch.int64)
             ball_det = ball_det[ball_det[..., 4] >= self.ball_threshold]
             ball_boxes = ball_det[..., 0:4]
             ball_scores = ball_det[..., 4]
-            ball_labels = torch.tensor([BALL_LABEL] * len(ball_det), dtype=torch.int64)
+            ball_labels = torch.tensor(
+                [BALL_LABEL] * len(ball_det), dtype=torch.int64)
 
             boxes = torch.cat([player_boxes, ball_boxes], dim=0)
             scores = torch.cat([player_scores, ball_scores], dim=0)
@@ -255,7 +314,8 @@ class FootAndBall(nn.Module):
         x = self.base_network(x)
         # x must return 2 tensors
         # one (higher spatial resolution) is for ball detection (downsampled by 4)
-        # the other (lower spatial resolution) is for players detection (downsampled by 16)
+        # the other (lower spatial resolution) is for players detection
+        # (downsampled by 16)
         assert len(x) == 2
         # Same batch size for two tensors
         assert x[0].shape[0] == x[1].shape[0]
@@ -272,21 +332,29 @@ class FootAndBall(nn.Module):
         player_bbox = self.player_regressor(x[1])
 
         if self.phase == 'eval' or self.phase == 'detect':
-            # In eval and detect mode, convert logits to normalized confidence in [0..1] range
+            # In eval and detect mode, convert logits to normalized confidence
+            # in [0..1] range
             player_feature_map = self.softmax(player_feature_map)
             ball_feature_map = self.softmax(ball_feature_map)
 
         if self.phase == 'train' or self.phase == 'eval':
-            # Permute dimensions, so channel is the last one (batch_size, h, w, n_channels)
-            ball_feature_map = ball_feature_map.permute(0, 2, 3, 1).contiguous()
-            player_feature_map = player_feature_map.permute(0, 2, 3, 1).contiguous()
+            # Permute dimensions, so channel is the last one (batch_size, h, w,
+            # n_channels)
+            ball_feature_map = ball_feature_map.permute(
+                0, 2, 3, 1).contiguous()
+            player_feature_map = player_feature_map.permute(
+                0, 2, 3, 1).contiguous()
             player_bbox = player_bbox.permute(0, 2, 3, 1).contiguous()
             # loc has shape (n_batch_size, feature_map_size_y, feature_map_size_x, 4)
-            # conf has shape (n_batch_size, feature_map_size_y, feature_map_size_x, 2)
+            # conf has shape (n_batch_size, feature_map_size_y,
+            # feature_map_size_x, 2)
             output = (player_bbox, player_feature_map, ball_feature_map)
         elif self.phase == 'detect':
             # Detect bounding boxes
-            output = self.detect(player_feature_map, player_bbox, ball_feature_map)
+            output = self.detect(
+                player_feature_map,
+                player_bbox,
+                ball_feature_map)
 
         return output
 
@@ -322,8 +390,12 @@ class FootAndBall(nn.Module):
         print('')
 
 
-def build_footandball_detector1(phase='train', max_player_detections=100, max_ball_detections=100,
-                                player_threshold=0.0, ball_threshold=0.0):
+def build_footandball_detector1(
+        phase='train',
+        max_player_detections=100,
+        max_ball_detections=100,
+        player_threshold=0.0,
+        ball_threshold=0.0):
     # phase: 'train' or 'test'
     assert phase in ['train', 'test', 'detect']
 
@@ -331,37 +403,65 @@ def build_footandball_detector1(phase='train', max_player_detections=100, max_ba
     # FPN returns 3 tensors for each input: one dowscaled 4 times in each input dimension, the other downscaled 16 times
     # tensor with 2 channels downscaled 4 times is used for ball detection
     # tensor with 2 channels downscaled 16 times is used for the player detection (1 location corresponds to 16x16 pixel block)
-    # tensor with 4 channels downscaled 16 times is used for the player bbox regression
+    # tensor with 4 channels downscaled 16 times is used for the player bbox
+    # regression
     lateral_channels = 32
     i_channels = 32
 
-    base_net = fpn.FPN(layers, out_channels=out_channels, lateral_channels=lateral_channels, return_layers=[1, 3])
-    ball_classifier = nn.Sequential(nn.Conv2d(lateral_channels, out_channels=i_channels, kernel_size=3, padding=1),
-                                    nn.ReLU(inplace=True),
-                                    nn.Conv2d(i_channels, out_channels=2, kernel_size=3, padding=1))
-    player_classifier = nn.Sequential(nn.Conv2d(lateral_channels, out_channels=i_channels, kernel_size=3, padding=1),
-                                      nn.ReLU(inplace=True),
-                                      nn.Conv2d(i_channels, out_channels=2, kernel_size=3, padding=1))
-    player_regressor = nn.Sequential(nn.Conv2d(lateral_channels, out_channels=i_channels, kernel_size=3, padding=1),
-                                     nn.ReLU(inplace=True),
-                                     nn.Conv2d(i_channels, out_channels=4, kernel_size=3, padding=1))
-    detector = FootAndBall(phase, base_net, player_regressor=player_regressor, player_classifier=player_classifier,
-                           ball_classifier=ball_classifier, ball_threshold=ball_threshold,
-                           player_threshold=player_threshold, max_ball_detections=max_ball_detections,
-                           max_player_detections=max_player_detections)
+    base_net = fpn.FPN(
+        layers,
+        out_channels=out_channels,
+        lateral_channels=lateral_channels,
+        return_layers=[
+            1,
+            3])
+    ball_classifier = nn.Sequential(
+        nn.Conv2d(
+            lateral_channels, out_channels=i_channels, kernel_size=3, padding=1), nn.ReLU(
+            inplace=True), nn.Conv2d(
+                i_channels, out_channels=2, kernel_size=3, padding=1))
+    player_classifier = nn.Sequential(
+        nn.Conv2d(
+            lateral_channels, out_channels=i_channels, kernel_size=3, padding=1), nn.ReLU(
+            inplace=True), nn.Conv2d(
+                i_channels, out_channels=2, kernel_size=3, padding=1))
+    player_regressor = nn.Sequential(
+        nn.Conv2d(
+            lateral_channels, out_channels=i_channels, kernel_size=3, padding=1), nn.ReLU(
+            inplace=True), nn.Conv2d(
+                i_channels, out_channels=4, kernel_size=3, padding=1))
+    detector = FootAndBall(
+        phase,
+        base_net,
+        player_regressor=player_regressor,
+        player_classifier=player_classifier,
+        ball_classifier=ball_classifier,
+        ball_threshold=ball_threshold,
+        player_threshold=player_threshold,
+        max_ball_detections=max_ball_detections,
+        max_player_detections=max_player_detections)
     return detector
 
 
-def model_factory(model_name, phase, max_player_detections=100, max_ball_detections=100, player_threshold=0.0,
-                  ball_threshold=0.0):
+def model_factory(
+        model_name,
+        phase,
+        max_player_detections=100,
+        max_ball_detections=100,
+        player_threshold=0.0,
+        ball_threshold=0.0):
     if model_name == 'fb1':
         model_fn = build_footandball_detector1
     else:
         print('Model not implemented: {}'.format(model_name))
         raise NotImplementedError
 
-    return model_fn(phase, ball_threshold=ball_threshold, player_threshold=player_threshold,
-                    max_ball_detections=max_ball_detections, max_player_detections=max_player_detections)
+    return model_fn(
+        phase,
+        ball_threshold=ball_threshold,
+        player_threshold=player_threshold,
+        max_ball_detections=max_ball_detections,
+        max_player_detections=max_player_detections)
 
 
 if __name__ == '__main__':

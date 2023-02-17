@@ -24,9 +24,17 @@ from misc.config import Params
 MODEL_FOLDER = 'models'
 
 
-def train_model(model, optimizer, scheduler, num_epochs, dataloaders, device, model_name):
+def train_model(
+        model,
+        optimizer,
+        scheduler,
+        num_epochs,
+        dataloaders,
+        device,
+        model_name):
     # Weight for components of the loss function.
-    # Ball-related loss and player-related loss are mean losses (loss per one positive example)
+    # Ball-related loss and player-related loss are mean losses (loss per one
+    # positive example)
     alpha_l_player = 0.01
     alpha_c_player = 1.
     alpha_c_ball = 5.
@@ -59,7 +67,11 @@ def train_model(model, optimizer, scheduler, num_epochs, dataloaders, device, mo
             else:
                 model.eval()   # Set model to evaluate mode
 
-            batch_stats = {'loss': [], 'loss_ball_c': [], 'loss_player_c': [], 'loss_player_l': []}
+            batch_stats = {
+                'loss': [],
+                'loss_ball_c': [],
+                'loss_player_c': [],
+                'loss_player_l': []}
 
             count_batches = 0
             # Iterate over data.
@@ -74,9 +86,11 @@ def train_model(model, optimizer, scheduler, num_epochs, dataloaders, device, mo
                     predictions = model(images)
                     # Backpropagation
                     optimizer.zero_grad()
-                    loss_l_player, loss_c_player, loss_c_ball = criterion(predictions, gt_maps)
+                    loss_l_player, loss_c_player, loss_c_ball = criterion(
+                        predictions, gt_maps)
 
-                    loss = alpha_l_player * loss_l_player + alpha_c_player * loss_c_player + alpha_c_ball * loss_c_ball
+                    loss = alpha_l_player * loss_l_player + alpha_c_player * \
+                        loss_c_player + alpha_c_ball * loss_c_ball
 
                     # backward + optimize only if in training phase
                     if phase == 'train':
@@ -97,8 +111,13 @@ def train_model(model, optimizer, scheduler, num_epochs, dataloaders, device, mo
 
             training_stats[phase].append(avg_batch_stats)
             s = '{} Avg. loss total / ball conf. / player conf. / player loc.: {:.4f} / {:.4f} / {:.4f} / {:.4f}'
-            print(s.format(phase, avg_batch_stats['loss'], avg_batch_stats['loss_ball_c'],
-                           avg_batch_stats['loss_player_c'], avg_batch_stats['loss_player_l']))
+            print(
+                s.format(
+                    phase,
+                    avg_batch_stats['loss'],
+                    avg_batch_stats['loss_ball_c'],
+                    avg_batch_stats['loss_player_c'],
+                    avg_batch_stats['loss_player_l']))
 
         # Scheduler step
         scheduler.step()
@@ -117,12 +136,15 @@ def train(params: Params):
     if not os.path.exists(MODEL_FOLDER):
         os.mkdir(MODEL_FOLDER)
 
-    assert os.path.exists(MODEL_FOLDER), ' Cannot create folder to save trained model: {}'.format(MODEL_FOLDER)
+    assert os.path.exists(
+        MODEL_FOLDER), ' Cannot create folder to save trained model: {}'.format(MODEL_FOLDER)
 
     dataloaders = make_dataloaders(params)
-    print('Training set: Dataset size: {}'.format(len(dataloaders['train'].dataset)))
+    print('Training set: Dataset size: {}'.format(
+        len(dataloaders['train'].dataset)))
     if 'val' in dataloaders:
-        print('Validation set: Dataset size: {}'.format(len(dataloaders['val'].dataset)))
+        print('Validation set: Dataset size: {}'.format(
+            len(dataloaders['val'].dataset)))
 
     # Create model
     device = "cuda" if torch.cuda.is_available() else 'cpu'
@@ -135,15 +157,31 @@ def train(params: Params):
 
     optimizer = optim.Adam(model.parameters(), lr=params.lr)
     scheduler_milestones = [int(params.epochs * 0.75)]
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, scheduler_milestones, gamma=0.1)
-    train_model(model, optimizer, scheduler, params.epochs, dataloaders, device, model_name)
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(
+        optimizer, scheduler_milestones, gamma=0.1)
+    train_model(
+        model,
+        optimizer,
+        scheduler,
+        params.epochs,
+        dataloaders,
+        device,
+        model_name)
 
 
 if __name__ == '__main__':
     print('Train FoootAndBall detector on ISSIA dataset')
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', help='Path to the configuration file', type=str, default='config.txt')
-    parser.add_argument('--debug', dest='debug', help='debug mode', action='store_true')
+    parser.add_argument(
+        '--config',
+        help='Path to the configuration file',
+        type=str,
+        default='config.txt')
+    parser.add_argument(
+        '--debug',
+        dest='debug',
+        help='debug mode',
+        action='store_true')
     args = parser.parse_args()
 
     print('Config path: {}'.format(args.config))

@@ -74,13 +74,17 @@ class SpdDataset(torch.utils.data.Dataset):
             boxes.append((x1, y1, x2, y2))
             labels.append(PLAYER_LABEL)
 
-        return np.array(boxes, dtype=np.float), np.array(labels, dtype=np.int64)
+        return np.array(
+            boxes, dtype=np.float), np.array(
+            labels, dtype=np.int64)
 
 
 def create_spd_dataset(dataset_path, ids, mode):
-    # Merge multiple Datasets and then splits them into one training and one validation dataset
+    # Merge multiple Datasets and then splits them into one training and one
+    # validation dataset
     assert mode == 'train' or mode == 'val'
-    assert os.path.exists(dataset_path), 'Cannot find dataset: ' + str(dataset_path)
+    assert os.path.exists(
+        dataset_path), 'Cannot find dataset: ' + str(dataset_path)
 
     image_size = (720, 1280)
     if mode == 'train':
@@ -98,14 +102,20 @@ def create_spd_dataset(dataset_path, ids, mode):
 
 def open_dataset(root, ndx):
     # Get path to images and ground truth
-    print('Reading soccer player detection dataset from: {} set: {}'.format(root, ndx))
-    assert os.path.exists(root), print('Dataset root not found: {}'.format(root))
+    print(
+        'Reading soccer player detection dataset from: {} set: {}'.format(
+            root,
+            ndx))
+    assert os.path.exists(root), print(
+        'Dataset root not found: {}'.format(root))
     assert ndx in [1, 2], print('Dataset index can be only 1 or 2')
 
     gt_path = os.path.join(root, 'annotation_{}.mat'.format(ndx))
     data_path = os.path.join(root, 'DataSet_00{}'.format(ndx))
-    assert os.path.exists(gt_path), print('Ground truth not found: {}'.format(gt_path))
-    assert os.path.exists(data_path), print('Dataset folder not found: {}'.format(data_path))
+    assert os.path.exists(gt_path), print(
+        'Ground truth not found: {}'.format(gt_path))
+    assert os.path.exists(data_path), print(
+        'Dataset folder not found: {}'.format(data_path))
 
     gt = scipy.io.loadmat(gt_path)
     return data_path, gt

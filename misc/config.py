@@ -9,7 +9,8 @@ import time
 
 class Params:
     def __init__(self, path):
-        assert os.path.exists(path), 'Cannot find configuration file: {}'.format(path)
+        assert os.path.exists(
+            path), 'Cannot find configuration file: {}'.format(path)
         self.path = path
 
         config = configparser.ConfigParser()
@@ -39,14 +40,21 @@ class Params:
         self._check_params()
 
     def _check_params(self):
-        assert os.path.exists(self.issia_path), "Cannot access ISSIA CNR dataset: {}".format(self.issia_path)
-        assert os.path.exists(self.spd_path), "Cannot access SoccerPlayerDetection_bmvc17 dataset: {}".format(self.spd_path)
+        assert os.path.exists(
+            self.issia_path), "Cannot access ISSIA CNR dataset: {}".format(
+            self.issia_path)
+        assert os.path.exists(
+            self.spd_path), "Cannot access SoccerPlayerDetection_bmvc17 dataset: {}".format(
+            self.spd_path)
         for c in self.issia_train_cameras:
-            assert 1 <= c <= 6, 'ISSIA CNR camera number must be between 1 and 6. Is: {}'.format(c)
+            assert 1 <= c <= 6, 'ISSIA CNR camera number must be between 1 and 6. Is: {}'.format(
+                c)
         for c in self.issia_val_cameras:
-            assert 1 <= c <= 6, 'ISSIA CNR camera number must be between 1 and 6. Is: {}'.format(c)
+            assert 1 <= c <= 6, 'ISSIA CNR camera number must be between 1 and 6. Is: {}'.format(
+                c)
         for c in self.spd_set:
-            assert c == 1 or c == 2, 'SPD dataset number must be 1 or 2. Is: {}'.format(c)
+            assert c == 1 or c == 2, 'SPD dataset number must be 1 or 2. Is: {}'.format(
+                c)
 
     def print(self):
         print('Parameters:')

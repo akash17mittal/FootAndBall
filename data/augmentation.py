@@ -24,35 +24,56 @@ NORMALIZATION_STD = [0.229, 0.224, 0.225]
 
 # Tensor to numpy transform
 
-denormalize_trans = transforms.Compose([transforms.Normalize(mean=[0., 0., 0.], std=[1.0 / e for e in NORMALIZATION_STD]),
-                                        transforms.Normalize(mean=[-e for e in NORMALIZATION_MEAN], std=[1., 1., 1.])])
+denormalize_trans = transforms.Compose(
+    [
+        transforms.Normalize(
+            mean=[
+                0.,
+                0.,
+                0.],
+            std=[
+                1.0 / e for e in NORMALIZATION_STD]),
+        transforms.Normalize(
+            mean=[
+                -e for e in NORMALIZATION_MEAN],
+            std=[
+                1.,
+                1.,
+                1.])])
 
-normalize_trans = transforms.Compose([transforms.ToTensor(),
-                                      transforms.Normalize(NORMALIZATION_MEAN, NORMALIZATION_STD)])
+normalize_trans = transforms.Compose([transforms.ToTensor(
+), transforms.Normalize(NORMALIZATION_MEAN, NORMALIZATION_STD)])
 
 
 def tensor2image(image, downscale=None):
     # Convert image encoded as normalized tensor back to numpy (opencv format)
     img = denormalize_trans(image)
     temp = img.permute(1, 2, 0).cpu().numpy()
-    # Convert from RBG to BGR (OpenCV default color space) and return as the continuous array
+    # Convert from RBG to BGR (OpenCV default color space) and return as the
+    # continuous array
     temp = np.ascontiguousarray(temp[:, :, (2, 1, 0)])
     if downscale is not None:
-        temp = cv2.resize(temp, (temp.shape[1] // downscale, temp.shape[0] // downscale))
+        temp = cv2.resize(
+            temp,
+            (temp.shape[1] //
+             downscale,
+             temp.shape[0] //
+             downscale))
     return temp
 
 
 def heatmap2image(tensor, channel=1):
     # Convert 1-channel (or more) heatmap/confidence map to numpy image
     # tensor: (h, w) or (h, w, n_channels) tensor
-    # channel: channel to show/convert to image (used if there's more than one channel)
+    # channel: channel to show/convert to image (used if there's more than one
+    # channel)
 
     assert tensor.dim() == 2 or tensor.dim() == 3
 
     if tensor.dim() == 3:
         tensor = tensor[:, :, channel]
 
-    image = tensor.cpu().numpy().astype(np.uint8)*255
+    image = tensor.cpu().numpy().astype(np.uint8) * 255
     heatmap = cv2.applyColorMap(image, cv2.COLORMAP_JET)
     return heatmap
 
@@ -80,17 +101,24 @@ def apply_transform_and_clip(boxes, labels, M, shape):
     assert len(boxes) == len(labels)
 
     ones = np.ones((len(boxes), 1))
-    ext_pts1 = np.append(boxes[:, :2], ones, 1).transpose()     # Upper right corner
-    ext_pts2 = np.append(boxes[:, 2:4], ones, 1).transpose()    # Lower left corner
+    # Upper right corner
+    ext_pts1 = np.append(boxes[:, :2], ones, 1).transpose()
+    # Lower left corner
+    ext_pts2 = np.append(boxes[:, 2:4], ones, 1).transpose()
 
     transformed_pts1 = np.dot(M[:2], ext_pts1).transpose()
     transformed_pts2 = np.dot(M[:2], ext_pts2).transpose()
-    # We need to find out which corner is top right and which is bottom left, after the transform
+    # We need to find out which corner is top right and which is bottom left,
+    # after the transform
     transformed_boxes = np.zeros_like(boxes)
-    transformed_boxes[:, 0] = np.minimum(transformed_pts1[:, 0], transformed_pts2[:, 0])
-    transformed_boxes[:, 1] = np.minimum(transformed_pts1[:, 1], transformed_pts2[:, 1])
-    transformed_boxes[:, 2] = np.maximum(transformed_pts1[:, 0], transformed_pts2[:, 0])
-    transformed_boxes[:, 3] = np.maximum(transformed_pts1[:, 1], transformed_pts2[:, 1])
+    transformed_boxes[:, 0] = np.minimum(
+        transformed_pts1[:, 0], transformed_pts2[:, 0])
+    transformed_boxes[:, 1] = np.minimum(
+        transformed_pts1[:, 1], transformed_pts2[:, 1])
+    transformed_boxes[:, 2] = np.maximum(
+        transformed_pts1[:, 0], transformed_pts2[:, 0])
+    transformed_boxes[:, 3] = np.maximum(
+        transformed_pts1[:, 1], transformed_pts2[:, 1])
 
     assert boxes.shape == transformed_boxes.shape
     return clip(transformed_boxes, labels, shape)
@@ -103,14 +131,16 @@ def clip(boxes, labels, shape):
     :param shape: (width, height) tuple
     :return:
     """
-    box_contained = lambda e: 0 <= e[0] < shape[0] and 0 <= e[1] < shape[1] and 0 <= e[2] < shape[0] and 0 <= e[3] < shape[1]
+    def box_contained(
+        e): return 0 <= e[0] < shape[0] and 0 <= e[1] < shape[1] and 0 <= e[2] < shape[0] and 0 <= e[3] < shape[1]
     mask = [box_contained(box) for box in boxes]
     return boxes[mask], labels[mask]
 
 
 class ColorJitter(object):
     def __init__(self, brightness=0., contrast=0., saturation=0., hue=0.):
-        self.image_transform = transforms.ColorJitter(brightness, contrast, saturation, hue)
+        self.image_transform = transforms.ColorJitter(
+            brightness, contrast, saturation, hue)
 
     def __call__(self, sample):
         image, boxes, labels = sample
@@ -138,10 +168,17 @@ class RandomAffine:
             Will not apply shear by default
     """
 
-    def __init__(self, degrees, translate=None, scale=None, shear=None, p_hflip=0.5):
+    def __init__(
+            self,
+            degrees,
+            translate=None,
+            scale=None,
+            shear=None,
+            p_hflip=0.5):
         if isinstance(degrees, numbers.Number):
             if degrees < 0:
-                raise ValueError("If degrees is a single number, it must be positive.")
+                raise ValueError(
+                    "If degrees is a single number, it must be positive.")
             self.degrees = (-degrees, degrees)
         else:
             assert isinstance(degrees, (tuple, list)) and len(degrees) == 2, \
@@ -153,7 +190,8 @@ class RandomAffine:
                 "translate should be a list or tuple and it must be of length 2."
             for t in translate:
                 if not (0.0 <= t <= 1.0):
-                    raise ValueError("translation values should be between 0 and 1")
+                    raise ValueError(
+                        "translation values should be between 0 and 1")
         self.translate = translate
 
         if scale is not None:
@@ -167,7 +205,8 @@ class RandomAffine:
         if shear is not None:
             if isinstance(shear, numbers.Number):
                 if shear < 0:
-                    raise ValueError("If shear is a single number, it must be positive.")
+                    raise ValueError(
+                        "If shear is a single number, it must be positive.")
                 self.shear = (-shear, shear)
             else:
                 assert isinstance(shear, (tuple, list)) and \
@@ -207,9 +246,13 @@ class RandomAffine:
             if len(self.shear) == 2:
                 shear = [random.uniform(self.shear[0], self.shear[1]), 0.]
             elif len(self.shear) == 4:
-                shear = [random.uniform(self.shear[0], self.shear[1]), random.uniform(self.shear[2], self.shear[3])]
+                shear = [
+                    random.uniform(
+                        self.shear[0], self.shear[1]), random.uniform(
+                        self.shear[2], self.shear[3])]
             else:
-                assert NotImplementedError('Incorrect shear: {}'.format(self.shear))
+                assert NotImplementedError(
+                    'Incorrect shear: {}'.format(self.shear))
         else:
             shear = [0., 0.]
 
@@ -222,24 +265,32 @@ class RandomAffine:
         angle, translate, scale, shear = self.get_params(height, width)
 
         center = (width * 0.5 + 0.5, height * 0.5 + 0.5)
-        coeffs = F._get_inverse_affine_matrix(center, angle, translate, scale, shear)
+        coeffs = F._get_inverse_affine_matrix(
+            center, angle, translate, scale, shear)
         inverse_affine_matrix = np.eye(3)
-        inverse_affine_matrix[:2] = np.array(coeffs).reshape(2, 3)     # Fill-in first 2 rows of an affine transformation matrix
+        # Fill-in first 2 rows of an affine transformation matrix
+        inverse_affine_matrix[:2] = np.array(coeffs).reshape(2, 3)
 
         if np.random.rand() < self.p_hflip:
             # Post-apply horizontal flip
             # Pre-multiply by [ [-1, 0, width], [0, 1, 0], [0, 0, 1] ] matrix
             flip_matrix = np.eye(3)
             flip_matrix[0, 0] = -1
-            flip_matrix[0, 2] = width-1
-            # For inverse affine matrix, pre-multiply by a inverse flip matrix (which is the same as a flip matrix)
+            flip_matrix[0, 2] = width - 1
+            # For inverse affine matrix, pre-multiply by a inverse flip matrix
+            # (which is the same as a flip matrix)
             inverse_affine_matrix = flip_matrix @ inverse_affine_matrix
 
-        image = image.transform((width, height), Image.AFFINE, inverse_affine_matrix[:2].reshape(6), Image.BILINEAR)
+        image = image.transform((width,
+                                 height),
+                                Image.AFFINE,
+                                inverse_affine_matrix[:2].reshape(6),
+                                Image.BILINEAR)
 
         # Compute affine transform matrix and apply it to keypoints
         affine_matrix = np.linalg.pinv(inverse_affine_matrix)
-        boxes, labels = apply_transform_and_clip(boxes, labels, affine_matrix, (width, height))
+        boxes, labels = apply_transform_and_clip(
+            boxes, labels, affine_matrix, (width, height))
 
         return image, boxes, labels
 
@@ -294,10 +345,11 @@ class CenterCrop:
 
 
 class ToTensorAndNormalize(object):
-    # Convert image to tensors and normalize the image, ground truth is not changed
+    # Convert image to tensors and normalize the image, ground truth is not
+    # changed
     def __init__(self):
-        self.image_transforms = transforms.Compose([transforms.ToTensor(),
-                                                    transforms.Normalize(NORMALIZATION_MEAN, NORMALIZATION_STD)])
+        self.image_transforms = transforms.Compose([transforms.ToTensor(
+        ), transforms.Normalize(NORMALIZATION_MEAN, NORMALIZATION_STD)])
 
     def __call__(self, sample):
         # numpy image: H x W x C

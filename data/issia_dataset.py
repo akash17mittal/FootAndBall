@@ -16,7 +16,12 @@ from torch.utils.data import Sampler
 
 class IssiaDataset(torch.utils.data.Dataset):
     # Read images from the ISSIA dataset
-    def __init__(self, dataset_path, cameras, transform, only_ball_frames=False):
+    def __init__(
+            self,
+            dataset_path,
+            cameras,
+            transform,
+            only_ball_frames=False):
         """
         Args:
             root_dir: Directory with all the images
@@ -24,7 +29,8 @@ class IssiaDataset(torch.utils.data.Dataset):
             transform: Optional transform to be applied on a sample
         """
         for camera_id in cameras:
-            assert 1 <= camera_id <= 6, 'Unknown camera id: {}'.format(camera_id)
+            assert 1 <= camera_id <= 6, 'Unknown camera id: {}'.format(
+                camera_id)
 
         self.dataset_path = dataset_path
         self.cameras = cameras
@@ -42,38 +48,49 @@ class IssiaDataset(torch.utils.data.Dataset):
 
         for camera_id in cameras:
             # Extract frames from the sequence if needed
-            frames_path = os.path.join(dataset_path, 'unpacked', str(camera_id))
+            frames_path = os.path.join(
+                dataset_path, 'unpacked', str(camera_id))
             self.frames_path = frames_path
             if not os.path.exists(frames_path):
                 os.mkdir(frames_path)
-                issia_utils.extract_frames(dataset_path, camera_id, frames_path)
+                issia_utils.extract_frames(
+                    dataset_path, camera_id, frames_path)
 
             # Read ground truth data for the sequence
-            self.gt_annotations[camera_id] = issia_utils.read_issia_ground_truth(camera_id, dataset_path)
+            self.gt_annotations[camera_id] = issia_utils.read_issia_ground_truth(
+                camera_id, dataset_path)
 
             # Create a list with ids of all images with any annotation
             if self.only_ball_frames:
                 annotated_frames = set(self.gt_annotations[camera_id].ball_pos)
             else:
-                annotated_frames = set(self.gt_annotations[camera_id].ball_pos) and set(
+                annotated_frames = set(
+                    self.gt_annotations[camera_id].ball_pos) and set(
                     self.gt_annotations[camera_id].persons)
 
             min_annotated_frame = min(annotated_frames)
-            # Skip the first 50 annotated frames - as they may contain wrong annotations
-            annotated_frames = [e for e in list(annotated_frames) if e > min_annotated_frame+50]
+            # Skip the first 50 annotated frames - as they may contain wrong
+            # annotations
+            annotated_frames = [e for e in list(
+                annotated_frames) if e > min_annotated_frame + 50]
 
             for e in annotated_frames:
                 # Verify if the image file exists
-                # Sometimes ground truth contains more annotations than images in the sequence
-                file_path = os.path.join(frames_path, str(e) + self.image_extension)
+                # Sometimes ground truth contains more annotations than images
+                # in the sequence
+                file_path = os.path.join(
+                    frames_path, str(e) + self.image_extension)
                 if os.path.exists(file_path):
                     self.image_list.append((file_path, camera_id, e))
 
         self.n_images = len(self.image_list)
         self.ball_images_ndx = set(self.get_elems_with_ball())
-        self.no_ball_images_ndx = set([ndx for ndx in range(self.n_images) if ndx not in self.ball_images_ndx])
-        print('ISSIA CNR: {} frames with the ball'.format(len(self.ball_images_ndx)))
-        print('ISSIA CNR: {} frames without the ball'.format(len(self.no_ball_images_ndx)))
+        self.no_ball_images_ndx = set([ndx for ndx in range(
+            self.n_images) if ndx not in self.ball_images_ndx])
+        print('ISSIA CNR: {} frames with the ball'.format(
+            len(self.ball_images_ndx)))
+        print('ISSIA CNR: {} frames without the ball'.format(
+            len(self.no_ball_images_ndx)))
 
     def __len__(self):
         return self.n_images
@@ -106,11 +123,20 @@ class IssiaDataset(torch.utils.data.Dataset):
             labels.append(BALL_LABEL)
 
         # Add annotations for the player position
-        for (player_id, player_height, player_width, player_x, player_y) in self.gt_annotations[camera_id].persons[image_ndx]:
-            boxes.append((player_x, player_y, player_x + player_width, player_y + player_height))
+        for (player_id, player_height, player_width, player_x,
+             player_y) in self.gt_annotations[camera_id].persons[image_ndx]:
+            boxes.append(
+                (player_x,
+                 player_y,
+                 player_x +
+                 player_width,
+                 player_y +
+                 player_height))
             labels.append(PLAYER_LABEL)
 
-        return np.array(boxes, dtype=np.float), np.array(labels, dtype=np.int64)
+        return np.array(
+            boxes, dtype=np.float), np.array(
+            labels, dtype=np.int64)
 
     def get_elems_with_ball(self):
         # Get indexes of images with ball ground truth
@@ -126,7 +152,8 @@ class IssiaDataset(torch.utils.data.Dataset):
 def create_issia_dataset(dataset_path, cameras, mode, only_ball_frames=False):
     # Get ISSIA datasets for multiple cameras
     assert mode == 'train' or mode == 'val'
-    assert os.path.exists(dataset_path), 'Cannot find dataset: ' + str(dataset_path)
+    assert os.path.exists(
+        dataset_path), 'Cannot find dataset: ' + str(dataset_path)
 
     train_image_size = (720, 1280)
     val_image_size = (1080, 1920)
@@ -135,5 +162,9 @@ def create_issia_dataset(dataset_path, cameras, mode, only_ball_frames=False):
     elif mode == 'val':
         transform = augmentation.NoAugmentation(size=val_image_size)
 
-    dataset = IssiaDataset(dataset_path, cameras, transform, only_ball_frames=only_ball_frames)
+    dataset = IssiaDataset(
+        dataset_path,
+        cameras,
+        transform,
+        only_ball_frames=only_ball_frames)
     return dataset

@@ -15,7 +15,8 @@ def hard_negative_mining(loss, labels, neg_pos_ratio):
     """
     pos_mask = labels > 0
     num_pos = pos_mask.long().sum(dim=1, keepdim=True)
-    # Even if there's no positive example for the class, generate 1 * neg_pos_ratio negatives
+    # Even if there's no positive example for the class, generate 1 *
+    # neg_pos_ratio negatives
     num_pos[num_pos == 0] = 1
     num_neg = num_pos * neg_pos_ratio
 
@@ -64,20 +65,28 @@ class SSDLoss(nn.Module):
             # derived from cross_entropy=sum(log(p))
             # loss_player is (batch_siz, n_player_cells) tensor
             loss_player = -F.log_softmax(player_conf, dim=2)[:, :, 0]
-            mask_player, num_pos_player = hard_negative_mining(loss_player, player_conf_t, self.neg_pos_ratio)
+            mask_player, num_pos_player = hard_negative_mining(
+                loss_player, player_conf_t, self.neg_pos_ratio)
             loss_ball = -F.log_softmax(ball_conf, dim=2)[:, :, 0]
-            mask_ball, num_pos_ball = hard_negative_mining(loss_ball, ball_conf_t, self.neg_pos_ratio)
+            mask_ball, num_pos_ball = hard_negative_mining(
+                loss_ball, ball_conf_t, self.neg_pos_ratio)
 
         player_conf = player_conf[mask_player, :]
         ball_conf = ball_conf[mask_ball, :]
 
-        #player_loss_c = F.cross_entropy(player_conf.view(-1, num_classes), player_conf_t[mask_player], reduction='sum')
-        player_loss_c = F.cross_entropy(player_conf, player_conf_t[mask_player], reduction='sum')
-        ball_loss_c = F.cross_entropy(ball_conf, ball_conf_t[mask_ball], reduction='sum')
+        # player_loss_c = F.cross_entropy(player_conf.view(-1, num_classes), player_conf_t[mask_player], reduction='sum')
+        player_loss_c = F.cross_entropy(
+            player_conf,
+            player_conf_t[mask_player],
+            reduction='sum')
+        ball_loss_c = F.cross_entropy(
+            ball_conf, ball_conf_t[mask_ball], reduction='sum')
 
         pos_mask_player = player_conf_t > 0
         player_loc = player_loc[pos_mask_player, :].view(-1, 4)
         player_loc_t = player_loc_t[pos_mask_player, :].view(-1, 4)
-        player_loss_l  = F.smooth_l1_loss(player_loc, player_loc_t, reduction='sum')
+        player_loss_l = F.smooth_l1_loss(
+            player_loc, player_loc_t, reduction='sum')
 
-        return player_loss_l/num_pos_player, player_loss_c/num_pos_player, ball_loss_c/num_pos_ball
+        return player_loss_l / num_pos_player, player_loss_c / \
+            num_pos_player, ball_loss_c / num_pos_ball
